@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import ProductCard from "@/components/ProductCard";
+import OrderConfirmModel from "@/components/modal/OrderConfirmModal";
+import { useRouter } from "next/navigation";
 
 type Product = {
   id: number;
@@ -10,9 +12,10 @@ type Product = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<number[]>([]);
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -56,6 +59,28 @@ export default function Home() {
     return sum + product.price;
   }, 0);
 
+  const orderItems = Object.entries(orderCount).map(([id, count]) => {
+    const product = products.find((p) => p.id === Number(id));
+    if (!product) return null;
+
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: count,
+    };
+  }).filter(Boolean) as {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+  }[];
+
+  const handleConfirm = () => {
+    setOrders([]);
+    setIsModalOpen(false);
+    router.push("/complete");
+  };
 
   return (
     <div className="p-4">
@@ -103,14 +128,30 @@ export default function Home() {
               </li>
             )
           })}
-
-          <p className="mt-4 font-bold">
-            合計金額：¥{totalPrice}
-          </p>
         </ul>
 
-      </div>
 
+        <p className="mt-4 font-bold">
+          合計金額：¥{totalPrice}
+        </p>
+
+        {orders.length > 0 && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            注文確認
+          </button>
+        )}
+      </div>
+      {isModalOpen && (
+        <OrderConfirmModel
+          items={orderItems}
+          total={totalPrice}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={handleConfirm}
+        />
+      )}
     </div>
   );
 }
